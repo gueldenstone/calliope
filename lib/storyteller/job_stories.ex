@@ -9,25 +9,27 @@ defmodule Storyteller.JobStories do
   alias Storyteller.JobStories.JobStory
 
   @doc """
-  Returns the list of job_stories.
+  Returns the list of job_stories with products preloaded.
 
   ## Examples
 
       iex> list_job_stories()
-      [%JobStory{}, ...]
+      [%JobStory{products: [%Product{}, ...]}, ...]
 
   """
   def list_job_stories do
-    Repo.all(JobStory)
+    JobStory
+    |> preload(:products)
+    |> Repo.all()
   end
 
   @doc """
-  Returns the list of job_stories filtered by search term.
+  Returns the list of job_stories filtered by search term with products preloaded.
 
   ## Examples
 
       iex> list_job_stories("user")
-      [%JobStory{}, ...]
+      [%JobStory{products: [%Product{}, ...]}, ...]
 
   """
   def list_job_stories(search_term) when is_binary(search_term) and search_term != "" do
@@ -41,26 +43,31 @@ defmodule Storyteller.JobStories do
         ilike(j.motivation, ^search_pattern) or
         ilike(j.outcome, ^search_pattern)
     )
+    |> preload(:products)
     |> Repo.all()
   end
 
   def list_job_stories(_), do: list_job_stories()
 
   @doc """
-  Gets a single job_story.
+  Gets a single job_story with products preloaded.
 
   Raises `Ecto.NoResultsError` if the Job story does not exist.
 
   ## Examples
 
       iex> get_job_story!(123)
-      %JobStory{}
+      %JobStory{products: [%Product{}, ...]}
 
       iex> get_job_story!(456)
       ** (Ecto.NoResultsError)
 
   """
-  def get_job_story!(id), do: Repo.get!(JobStory, id)
+  def get_job_story!(id) do
+    JobStory
+    |> preload(:products)
+    |> Repo.get!(id)
+  end
 
   @doc """
   Creates a job_story.
@@ -75,9 +82,16 @@ defmodule Storyteller.JobStories do
 
   """
   def create_job_story(attrs \\ %{}) do
-    %JobStory{}
-    |> JobStory.changeset(attrs)
-    |> Repo.insert()
+    case %JobStory{}
+         |> JobStory.changeset(attrs)
+         |> Repo.insert() do
+      {:ok, job_story} ->
+        # Reload with products preloaded
+        {:ok, get_job_story!(job_story.id)}
+
+      error ->
+        error
+    end
   end
 
   @doc """
@@ -93,9 +107,16 @@ defmodule Storyteller.JobStories do
 
   """
   def update_job_story(%JobStory{} = job_story, attrs) do
-    job_story
-    |> JobStory.changeset(attrs)
-    |> Repo.update()
+    case job_story
+         |> JobStory.changeset(attrs)
+         |> Repo.update() do
+      {:ok, job_story} ->
+        # Reload with products preloaded
+        {:ok, get_job_story!(job_story.id)}
+
+      error ->
+        error
+    end
   end
 
   @doc """
@@ -125,5 +146,37 @@ defmodule Storyteller.JobStories do
   """
   def change_job_story(%JobStory{} = job_story, attrs \\ %{}) do
     JobStory.changeset(job_story, attrs)
+  end
+
+  @doc """
+  Associates products with a job story.
+
+  ## Examples
+
+      iex> associate_products_with_job_story(job_story, [product1, product2])
+      {:ok, %JobStory{products: [%Product{}, %Product{}]}}
+
+  """
+  def associate_products_with_job_story(%JobStory{} = job_story, products) do
+    job_story
+    |> Repo.preload(:products)
+    |> JobStory.changeset(%{products: products})
+    |> Repo.update()
+  end
+
+  @doc """
+  Gets job stories by product.
+
+  ## Examples
+
+      iex> get_job_stories_by_product(product)
+      [%JobStory{}, ...]
+
+  """
+  def get_job_stories_by_product(product) do
+    JobStory
+    |> join(:inner, [j], p in assoc(j, :products))
+    |> where([j, p], p.id == ^product.id)
+    |> Repo.all()
   end
 end

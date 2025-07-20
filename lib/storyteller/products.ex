@@ -22,6 +22,21 @@ defmodule Storyteller.Products do
   end
 
   @doc """
+  Returns the list of products with job stories preloaded.
+
+  ## Examples
+
+      iex> list_products_with_job_stories()
+      [%Product{job_stories: [%JobStory{}, ...]}, ...]
+
+  """
+  def list_products_with_job_stories do
+    Product
+    |> preload(:job_stories)
+    |> Repo.all()
+  end
+
+  @doc """
   Gets a single product.
 
   Raises `Ecto.NoResultsError` if the Product does not exist.
@@ -36,6 +51,26 @@ defmodule Storyteller.Products do
 
   """
   def get_product!(id), do: Repo.get!(Product, id)
+
+  @doc """
+  Gets a single product with job stories preloaded.
+
+  Raises `Ecto.NoResultsError` if the Product does not exist.
+
+  ## Examples
+
+      iex> get_product_with_job_stories!(123)
+      %Product{job_stories: [%JobStory{}, ...]}
+
+      iex> get_product_with_job_stories!(456)
+      ** (Ecto.NoResultsError)
+
+  """
+  def get_product_with_job_stories!(id) do
+    Product
+    |> preload(:job_stories)
+    |> Repo.get!(id)
+  end
 
   @doc """
   Creates a product.
@@ -100,5 +135,52 @@ defmodule Storyteller.Products do
   """
   def change_product(%Product{} = product, attrs \\ %{}) do
     Product.changeset(product, attrs)
+  end
+
+  @doc """
+  Associates job stories with a product.
+
+  ## Examples
+
+      iex> associate_job_stories_with_product(product, [job_story1, job_story2])
+      {:ok, %Product{job_stories: [%JobStory{}, %JobStory{}]}}
+
+  """
+  def associate_job_stories_with_product(%Product{} = product, job_stories) do
+    product
+    |> Repo.preload(:job_stories)
+    |> Product.changeset(%{job_stories: job_stories})
+    |> Repo.update()
+  end
+
+  @doc """
+  Gets products by job story.
+
+  ## Examples
+
+      iex> get_products_by_job_story(job_story)
+      [%Product{}, ...]
+
+  """
+  def get_products_by_job_story(job_story) do
+    Product
+    |> join(:inner, [p], j in assoc(p, :job_stories))
+    |> where([p, j], j.id == ^job_story.id)
+    |> Repo.all()
+  end
+
+  @doc """
+  Gets products by their IDs.
+
+  ## Examples
+
+      iex> list_products_by_ids(["id1", "id2"])
+      [%Product{}, ...]
+
+  """
+  def list_products_by_ids(ids) when is_list(ids) do
+    Product
+    |> where([p], p.id in ^ids)
+    |> Repo.all()
   end
 end

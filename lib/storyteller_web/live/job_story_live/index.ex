@@ -43,7 +43,9 @@ defmodule StorytellerWeb.JobStoryLive.Index do
 
   @impl true
   def handle_info({StorytellerWeb.JobStoryLive.FormComponent, {:saved, job_story}}, socket) do
-    {:noreply, stream_insert(socket, :job_stories, job_story)}
+    # Reload the job story with products for display
+    job_story_with_products = JobStories.get_job_story!(job_story.id)
+    {:noreply, stream_insert(socket, :job_stories, job_story_with_products, at: -1)}
   end
 
   @impl true

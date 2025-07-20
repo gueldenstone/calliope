@@ -13,11 +13,28 @@
   <:item title="Situation">{@job_story.situation}</:item>
   <:item title="Motivation">{@job_story.motivation}</:item>
   <:item title="Outcome">{@job_story.outcome}</:item>
+  <:item title="Products">
+    <div class="flex flex-wrap gap-2">
+      <%= for product <- @job_story.products do %>
+        <span class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-blue-100 text-blue-800">
+          {product.name}
+        </span>
+      <% end %>
+      <%= if Enum.empty?(@job_story.products) do %>
+        <span class="text-gray-500">No products associated</span>
+      <% end %>
+    </div>
+  </:item>
 </.list>
 
 <.back navigate={~p"/job_stories"}>Back to job_stories</.back>
 
-<.modal :if={@live_action == :edit} id="job_story-modal" show on_cancel={JS.patch(~p"/job_stories/#{@job_story}")}>
+<.modal
+  :if={@live_action == :edit}
+  id="job_story-modal"
+  show
+  on_cancel={JS.patch(~p"/job_stories/#{@job_story}")}
+>
   <.live_component
     module={StorytellerWeb.JobStoryLive.FormComponent}
     id={@job_story.id}
