@@ -11,6 +11,22 @@
 <.list>
   <:item title="Pseudonym">{@user.pseudonym}</:item>
   <:item title="Type">{@user.type}</:item>
+  <:item title="Markets">
+    <.associated_items
+      items={@user.markets}
+      name_field={:name}
+      empty_text="No markets associated"
+      badge_class="bg-blue-100 text-blue-800"
+    />
+  </:item>
+  <:item title="Job Stories">
+    <.associated_items
+      items={@user.job_stories}
+      name_field={:title}
+      empty_text="No job stories associated"
+      badge_class="bg-green-100 text-green-800"
+    />
+  </:item>
 </.list>
 
 <.back navigate={~p"/users"}>Back to users</.back>

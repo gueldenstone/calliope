@@ -51,6 +51,31 @@ defmodule StorytellerWeb.UserLive.FormComponent do
           <% end %>
         </div>
 
+        <div class="space-y-4">
+          <label class="block text-sm font-medium text-gray-700">Associated Job Stories</label>
+          <div class="space-y-2">
+            <%= for job_story <- @job_stories do %>
+              <label class="flex items-center">
+                <input
+                  type="checkbox"
+                  name="user[job_story_ids][]"
+                  value={job_story.id}
+                  checked={job_story.id in @selected_job_story_ids}
+                  class="rounded border-gray-300 text-indigo-600 focus:ring-indigo-500"
+                />
+                <span class="ml-2 text-sm text-gray-900">
+                  {job_story.title}
+                </span>
+              </label>
+            <% end %>
+          </div>
+          <%= if Enum.empty?(@job_stories) do %>
+            <p class="text-sm text-gray-500">
+              No job stories available. Create some job stories first.
+            </p>
+          <% end %>
+        </div>
+
         <:actions>
           <.button phx-disable-with="Saving...">Save User</.button>
         </:actions>
@@ -61,8 +86,9 @@ defmodule StorytellerWeb.UserLive.FormComponent do
 
   @impl true
   def update(%{user: user} = assigns, socket) do
-    # Load all markets for selection
+    # Load all markets and job stories for selection
     markets = Products.list_markets()
+    job_stories = Storyteller.JobStories.list_job_stories()
 
     # Get currently selected market IDs
     selected_market_ids =
@@ -72,11 +98,21 @@ defmodule StorytellerWeb.UserLive.FormComponent do
         _ -> []
       end
 
+    # Get currently selected job story IDs
+    selected_job_story_ids =
+      case user.job_stories do
+        %Ecto.Association.NotLoaded{} -> []
+        job_stories when is_list(job_stories) -> Enum.map(job_stories, & &1.id)
+        _ -> []
+      end
+
     {:ok,
      socket
      |> assign(assigns)
      |> assign(:markets, markets)
+     |> assign(:job_stories, job_stories)
      |> assign(:selected_market_ids, selected_market_ids)
+     |> assign(:selected_job_story_ids, selected_job_story_ids)
      |> assign_new(:form, fn ->
        to_form(Products.change_user(user))
      end)}
@@ -91,22 +127,28 @@ defmodule StorytellerWeb.UserLive.FormComponent do
         _ -> []
       end
 
+    # Extract selected job story IDs from the form params
+    selected_job_story_ids =
+      case user_params do
+        %{"job_story_ids" => job_story_ids} when is_list(job_story_ids) -> job_story_ids
+        _ -> []
+      end
+
     changeset = Products.change_user(socket.assigns.user, user_params)
 
     {:noreply,
      socket
      |> assign(:selected_market_ids, selected_market_ids)
+     |> assign(:selected_job_story_ids, selected_job_story_ids)
      |> assign(:form, to_form(changeset, action: :validate))}
   end
 
   def handle_event("save", %{"user" => user_params}, socket) do
-    # Ensure market_ids is always present (empty array if no markets selected)
+    # Ensure market_ids and job_story_ids are always present (empty array if none selected)
     user_params =
-      if Map.has_key?(user_params, "market_ids") do
-        user_params
-      else
-        Map.put(user_params, "market_ids", [])
-      end
+      user_params
+      |> Map.put_new("market_ids", [])
+      |> Map.put_new("job_story_ids", [])
 
     save_user(socket, socket.assigns.action, user_params)
   end

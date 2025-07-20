@@ -25,6 +25,14 @@
       <% end %>
     </div>
   </:item>
+  <:item title="Users">
+    <.associated_items
+      items={@job_story.users}
+      name_field={:pseudonym}
+      empty_text="No users associated"
+      badge_class="bg-green-100 text-green-800"
+    />
+  </:item>
 </.list>
 
 <.back navigate={~p"/job_stories"}>Back to job_stories</.back>

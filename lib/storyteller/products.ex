@@ -196,7 +196,9 @@ defmodule Storyteller.Products do
 
   """
   def list_markets do
-    Repo.all(Market)
+    Market
+    |> preload(:users)
+    |> Repo.all()
   end
 
   @doc """
@@ -213,7 +215,11 @@ defmodule Storyteller.Products do
       ** (Ecto.NoResultsError)
 
   """
-  def get_market!(id), do: Repo.get!(Market, id)
+  def get_market!(id) do
+    Market
+    |> preload(:users)
+    |> Repo.get!(id)
+  end
 
   @doc """
   Creates a market.
@@ -293,7 +299,7 @@ defmodule Storyteller.Products do
   """
   def list_users do
     User
-    |> preload(:markets)
+    |> preload([:markets, :job_stories])
     |> Repo.all()
   end
 
@@ -313,7 +319,7 @@ defmodule Storyteller.Products do
   """
   def get_user!(id) do
     User
-    |> preload(:markets)
+    |> preload([:markets, :job_stories])
     |> Repo.get!(id)
   end
 

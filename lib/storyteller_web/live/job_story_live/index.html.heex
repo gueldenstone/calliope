@@ -43,6 +43,14 @@
   <:col :let={{_id, job_story}} label="Products">
     <.associated_items items={job_story.products} name_field={:name} empty_text="No products" />
   </:col>
+  <:col :let={{_id, job_story}} label="Users">
+    <.associated_items
+      items={job_story.users}
+      name_field={:pseudonym}
+      empty_text="No users"
+      badge_class="bg-green-100 text-green-800"
+    />
+  </:col>
   <:action :let={{_id, job_story}}>
     <div class="sr-only">
       <.link navigate={~p"/job_stories/#{job_story}"}>Show</.link>

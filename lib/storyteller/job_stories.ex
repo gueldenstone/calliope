@@ -19,7 +19,7 @@ defmodule Storyteller.JobStories do
   """
   def list_job_stories do
     JobStory
-    |> preload(:products)
+    |> preload([:products, :users])
     |> Repo.all()
   end
 
@@ -43,7 +43,7 @@ defmodule Storyteller.JobStories do
         ilike(j.motivation, ^search_pattern) or
         ilike(j.outcome, ^search_pattern)
     )
-    |> preload(:products)
+    |> preload([:products, :users])
     |> Repo.all()
   end
 
@@ -65,7 +65,7 @@ defmodule Storyteller.JobStories do
   """
   def get_job_story!(id) do
     JobStory
-    |> preload(:products)
+    |> preload([:products, :users])
     |> Repo.get!(id)
   end
 
@@ -177,6 +177,21 @@ defmodule Storyteller.JobStories do
     JobStory
     |> join(:inner, [j], p in assoc(j, :products))
     |> where([j, p], p.id == ^product.id)
+    |> Repo.all()
+  end
+
+  @doc """
+  Gets job stories by their IDs.
+
+  ## Examples
+
+      iex> list_job_stories_by_ids(["id1", "id2"])
+      [%JobStory{}, ...]
+
+  """
+  def list_job_stories_by_ids(ids) when is_list(ids) do
+    JobStory
+    |> where([j], j.id in ^ids)
     |> Repo.all()
   end
 end
