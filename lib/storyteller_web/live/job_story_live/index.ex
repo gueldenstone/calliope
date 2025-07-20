@@ -612,6 +612,11 @@ defmodule StorytellerWeb.JobStoryLive.Index do
   def get_component_color(score) when score >= 0.6, do: "bg-yellow-100 text-yellow-800"
   def get_component_color(_score), do: "bg-red-100 text-red-800"
 
+  # Helper function for formatting dates
+  def format_date(date) do
+    Calendar.strftime(date, "%b %d, %Y")
+  end
+
   # Calculate similarity details for a job story against the reference story
   defp calculate_similarity_details(job_story, reference_job_story, weights) do
     if job_story.id == reference_job_story.id do

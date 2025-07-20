@@ -277,6 +277,11 @@
       <% end %>
     <% end %>
   </:col>
+  <:col :let={{_id, job_story}} label="Created">
+    <span class="text-sm text-gray-600">
+      {format_date(job_story.inserted_at)}
+    </span>
+  </:col>
   <:action :let={{_id, job_story}}>
     <div class="sr-only">
       <.link navigate={~p"/job_stories/#{job_story}"}>Show</.link>
