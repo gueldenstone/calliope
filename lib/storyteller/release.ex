@@ -9,6 +9,11 @@ defmodule Storyteller.Release do
     end
   end
 
+  def seed do
+    load_app()
+    Storyteller.Seeds.run()
+  end
+
   def rollback(repo, version) do
     load_app()
     {:ok, _, _} = Ecto.Migrator.with_repo(repo, &Ecto.Migrator.run(&1, :down, to: version))
