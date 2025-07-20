@@ -1,0 +1,318 @@
+# Cursor Rules for Storyteller Application
+
+## Overview
+This file defines coding standards and patterns for the Storyteller Phoenix LiveView application. Follow these rules to maintain code quality, consistency, and prevent common issues.
+
+## Association Management
+
+### Centralized Association Definitions
+ALWAYS define associations centrally at the module level in context modules:
+
+```elixir
+# ✅ CORRECT - In lib/storyteller/job_stories.ex
+@job_story_associations [:products, :users]
+
+# ✅ CORRECT - In lib/storyteller/products.ex
+@product_associations [:job_stories]
+@market_associations [:users]
+@user_associations [:markets, :job_stories]
+```
+
+### Association Helper Functions
+ALWAYS provide helper functions to access association definitions:
+
+```elixir
+def job_story_associations, do: @job_story_associations
+def product_associations, do: @product_associations
+```
+
+### Preloading Associations
+ALWAYS use centralized associations for preloading:
+
+```elixir
+# ✅ CORRECT
+def list_job_stories do
+  JobStory
+  |> preload(^@job_story_associations)
+  |> Repo.all()
+end
+
+# ❌ WRONG - Hardcoded preloads
+def list_job_stories do
+  JobStory
+  |> preload([:products, :users])
+  |> Repo.all()
+end
+```
+
+### Safe Association Updates
+ALWAYS use the generic update functions to preserve existing associations:
+
+```elixir
+# ✅ CORRECT
+def associate_products_with_job_story(%JobStory{} = job_story, products) do
+  update_job_story_association(job_story, :products, products)
+end
+
+# ✅ CORRECT - Generic helper
+def update_job_story_association(%JobStory{} = job_story, association, new_value) do
+  job_story_with_associations = Repo.preload(job_story, @job_story_associations)
+  changeset = JobStory.changeset(job_story_with_associations, %{})
+  changeset = Ecto.Changeset.put_assoc(changeset, association, new_value)
+  
+  # Preserve all other associations
+  changeset = Enum.reduce(@job_story_associations, changeset, fn assoc, acc_changeset ->
+    if assoc != association do
+      existing_value = Map.get(job_story_with_associations, assoc)
+      Ecto.Changeset.put_assoc(acc_changeset, assoc, existing_value)
+    else
+      acc_changeset
+    end
+  end)
+  
+  Repo.update(changeset)
+end
+```
+
+## Phoenix LiveView Patterns
+
+### Component Structure
+ALWAYS use proper LiveView component structure:
+
+```elixir
+# ✅ CORRECT
+def filterable_table(assigns) do
+  ~H"""
+  <div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200">
+      <!-- Table content -->
+    </table>
+  </div>
+  """
+end
+```
+
+### Event Handling
+ALWAYS use proper LiveView event handling:
+
+```elixir
+# ✅ CORRECT
+def handle_event("filter_change", %{"values" => values, "filter-type" => filter_type}, socket) do
+  case filter_type do
+    "products" ->
+      product_ids = parse_list_param(values)
+      {:noreply, push_patch(socket, to: ~p"/job_stories?#{build_filter_params(...)}")}
+    _ ->
+      {:noreply, socket}
+  end
+end
+```
+
+### URL Parameter Handling
+ALWAYS use `push_patch` for filter state management:
+
+```elixir
+# ✅ CORRECT
+{:noreply, push_patch(socket, to: ~p"/job_stories?#{build_filter_params(...)}")}
+```
+
+## Database Query Patterns
+
+### Filter Functions
+ALWAYS implement proper filter logic with joins:
+
+```elixir
+# ✅ CORRECT - Handle multiple joins properly
+def list_job_stories(filters) when is_map(filters) do
+  query = JobStory
+  
+  # Apply product filter
+  query = if product_ids && product_ids != [] do
+    query
+    |> join(:inner, [j], p in assoc(j, :products))
+    |> where([j, p], p.id in ^product_ids)
+  else
+    query
+  end
+  
+  # Apply user filter with proper join handling
+  query = if user_ids && user_ids != [] do
+    if product_ids && product_ids != [] do
+      query
+      |> join(:inner, [j, p], u in assoc(j, :users))
+      |> where([j, p, u], u.id in ^user_ids)
+    else
+      query
+      |> join(:inner, [j], u in assoc(j, :users))
+      |> where([j, u], u.id in ^user_ids)
+    end
+  else
+    query
+  end
+  
+  query
+  |> distinct([j], j.id)
+  |> preload(^@job_story_associations)
+  |> Repo.all()
+end
+```
+
+### Parameter Parsing
+ALWAYS handle list parameters safely:
+
+```elixir
+# ✅ CORRECT
+defp parse_list_param(nil), do: []
+defp parse_list_param(""), do: []
+defp parse_list_param(param) when is_binary(param) do
+  param
+  |> String.split(",")
+  |> Enum.filter(&(&1 != ""))
+end
+defp parse_list_param(param) when is_list(param), do: param
+defp parse_list_param(_), do: []
+```
+
+## Testing Patterns
+
+### Association Testing
+ALWAYS test association preservation:
+
+```elixir
+# ✅ CORRECT
+test "associations are preserved during updates" do
+  job_story = job_story_fixture(%{product_ids: [product.id]})
+  {:ok, updated_job_story} = JobStories.associate_users_with_job_story(job_story, [user])
+  
+  # Verify products are still associated
+  assert length(updated_job_story.products) == 1
+  assert length(updated_job_story.users) == 1
+end
+```
+
+### Filter Testing
+ALWAYS test combined filters:
+
+```elixir
+# ✅ CORRECT
+test "combined filters work correctly" do
+  # Create test data with both associations
+  job_story = job_story_fixture(%{product_ids: [product.id]})
+  {:ok, job_story_with_users} = JobStories.associate_users_with_job_story(job_story, [user])
+  
+  # Test combined filter
+  results = JobStories.list_job_stories(%{
+    "product_ids" => [product.id],
+    "user_ids" => [user.id]
+  })
+  
+  assert length(results) == 1
+  assert hd(results).id == job_story_with_users.id
+end
+```
+
+## Code Organization
+
+### Context Module Structure
+ALWAYS organize context modules with this structure:
+
+1. Module documentation
+2. Aliases and imports
+3. Centralized association definitions
+4. Helper functions for associations
+5. CRUD operations
+6. Association management functions
+7. Query functions
+8. Private helper functions
+
+### File Naming
+ALWAYS use consistent file naming:
+- Context modules: `lib/storyteller/context_name.ex`
+- Schemas: `lib/storyteller/context_name/schema_name.ex`
+- LiveView modules: `lib/storyteller_web/live/context_name_live/action.ex`
+- Templates: `lib/storyteller_web/live/context_name_live/action.html.heex`
+
+## Error Prevention
+
+### Common Pitfalls to Avoid
+NEVER:
+- Use hardcoded preloads instead of centralized associations
+- Call `put_assoc` without preloading all associations first
+- Forget to handle multiple joins in filter queries
+- Use string interpolation in SQL queries (use parameterized queries)
+- Forget to add `distinct` when using multiple joins
+
+### Validation
+ALWAYS:
+- Validate required fields in changesets
+- Handle edge cases in parameter parsing
+- Test association preservation
+- Use proper error handling in LiveView events
+
+## Performance Considerations
+
+### Query Optimization
+ALWAYS:
+- Use `distinct` when joining multiple tables
+- Preload only necessary associations
+- Use indexes on foreign keys
+- Consider query complexity when adding filters
+
+### LiveView Optimization
+ALWAYS:
+- Use `phx-debounce` for search inputs
+- Use streams for large datasets
+- Minimize re-renders with proper assigns
+- Use `push_patch` instead of full page reloads for filters
+
+## Documentation
+
+### Code Documentation
+ALWAYS:
+- Document public functions with `@doc` and `@spec`
+- Include usage examples in documentation
+- Document complex business logic
+- Keep documentation up to date with code changes
+
+### API Documentation
+ALWAYS:
+- Document filter parameters
+- Explain association behavior
+- Provide migration guides for breaking changes
+- Include troubleshooting sections
+
+## Migration Guidelines
+
+### When Adding New Associations
+1. Update the centralized association definition
+2. Add helper functions if needed
+3. Update the schema
+4. Add comprehensive tests
+5. Update documentation
+
+### When Refactoring
+1. Maintain backward compatibility
+2. Update all related tests
+3. Update documentation
+4. Test association preservation
+5. Verify filter functionality
+
+## Security Considerations
+
+### Input Validation
+ALWAYS:
+- Validate and sanitize user inputs
+- Use parameterized queries
+- Validate association IDs before updates
+- Implement proper authorization checks
+
+### Data Integrity
+ALWAYS:
+- Use database constraints
+- Validate associations exist before creating relationships
+- Handle cascade deletes appropriately
+- Use transactions for complex operations
+
+---
+
+**Remember**: These rules are designed to prevent common issues and maintain code quality. When in doubt, prioritize data integrity and code maintainability over convenience. 
