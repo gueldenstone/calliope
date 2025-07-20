@@ -6,5 +6,7 @@ defmodule StorytellerWeb.PageHTML do
   """
   use StorytellerWeb, :html
 
+  import StorytellerWeb.UIComponents
+
   embed_templates "page_html/*"
 end
