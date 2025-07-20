@@ -1,0 +1,29 @@
+<.header>
+  Job story {@job_story.id}
+  <:subtitle>This is a job_story record from your database.</:subtitle>
+  <:actions>
+    <.link patch={~p"/job_stories/#{@job_story}/show/edit"} phx-click={JS.push_focus()}>
+      <.button>Edit job_story</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.list>
+  <:item title="Title">{@job_story.title}</:item>
+  <:item title="Situation">{@job_story.situation}</:item>
+  <:item title="Motivation">{@job_story.motivation}</:item>
+  <:item title="Outcome">{@job_story.outcome}</:item>
+</.list>
+
+<.back navigate={~p"/job_stories"}>Back to job_stories</.back>
+
+<.modal :if={@live_action == :edit} id="job_story-modal" show on_cancel={JS.patch(~p"/job_stories/#{@job_story}")}>
+  <.live_component
+    module={StorytellerWeb.JobStoryLive.FormComponent}
+    id={@job_story.id}
+    title={@page_title}
+    action={@live_action}
+    job_story={@job_story}
+    patch={~p"/job_stories/#{@job_story}"}
+  />
+</.modal>

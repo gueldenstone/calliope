@@ -18,6 +18,13 @@ defmodule StorytellerWeb.Router do
     pipe_through :browser
 
     get "/", PageController, :home
+
+    live "/job_stories", JobStoryLive.Index, :index
+    live "/job_stories/new", JobStoryLive.Index, :new
+    live "/job_stories/:id/edit", JobStoryLive.Index, :edit
+
+    live "/job_stories/:id", JobStoryLive.Show, :show
+    live "/job_stories/:id/show/edit", JobStoryLive.Show, :edit
   end
 
   # Other scopes may use custom stacks.
