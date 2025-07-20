@@ -147,12 +147,14 @@ defmodule StorytellerWeb.UIComponents do
   attr :filters, :list, required: true, doc: "List of filter configurations"
   attr :phx_change, :string, required: true, doc: "Event to trigger on filter change"
   attr :row_click, :any, default: nil
+  attr :table_sort, :map, default: nil, doc: "Current table sort state"
   attr :rest, :global, include: ~w(class)
 
   slot :col, required: true do
     attr :label, :string, required: true
     attr :filterable, :string, doc: "Filter key for this column"
     attr :search_active, :boolean, doc: "Whether search is active for this column"
+    attr :sortable, :string, doc: "Sort field for this column"
   end
 
   slot :action, doc: "Action buttons for each row"
@@ -168,35 +170,18 @@ defmodule StorytellerWeb.UIComponents do
                 <div class="relative">
                   <div class="flex items-center justify-between">
                     <div class="flex items-center gap-2">
-                      <span>{col.label}</span>
-                      <%= if Map.get(col, :filterable) do %>
-                        <% filter_config = Enum.find(@filters, &(&1.key == String.to_atom(col.filterable))) %>
-                        <%= if filter_config && length(filter_config.selected_ids) > 0 do %>
-                          <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
-                            {length(filter_config.selected_ids)}
-                          </span>
-                        <% end %>
+                      <%= if Map.get(col, :sortable) do %>
+                        <.sortable_column
+                          label={col.label}
+                          field={col.sortable}
+                          table_sort={@table_sort}
+                        />
+                      <% else %>
+                        <span class="text-gray-500 uppercase tracking-wider">{col.label}</span>
                       <% end %>
+                      <.filter_badge col={col} filters={@filters} />
+                      <.filter_button col={col} filters={@filters} />
                     </div>
-                    <%= if Map.get(col, :filterable) do %>
-                      <button
-                        type="button"
-                        class={[
-                          "ml-2 hover:text-gray-600",
-                          if(Enum.find(@filters, &(&1.key == String.to_atom(col.filterable))) |> then(fn config -> config && length(config.selected_ids) > 0 end)) do
-                            "text-indigo-600"
-                          else
-                            "text-gray-400"
-                          end
-                        ]}
-                        phx-click={
-                          Phoenix.LiveView.JS.toggle(to: "#filter-dropdown-#{col.filterable}")
-                        }
-                        aria-label="Filter by #{col.label}"
-                      >
-                        <.icon name="hero-funnel" class="w-4 h-4" />
-                      </button>
-                    <% end %>
                   </div>
 
                   <%= if Map.get(col, :filterable) do %>
@@ -236,6 +221,84 @@ defmodule StorytellerWeb.UIComponents do
         </tbody>
       </table>
     </div>
+    """
+  end
+
+  # Component for sortable column headers
+  attr :label, :string, required: true
+  attr :field, :string, required: true
+  attr :table_sort, :map, default: nil
+
+  def sortable_column(assigns) do
+    ~H"""
+    <div class="flex items-center gap-2">
+      <span class="text-gray-500 uppercase tracking-wider">{@label}</span>
+      <button
+        type="button"
+        class="flex items-center justify-center w-5 h-5 hover:text-gray-700 transition-colors rounded"
+        phx-click={Phoenix.LiveView.JS.push("sort_table", value: %{field: @field})}
+        title="Sort by #{@label}"
+      >
+        <%= if @table_sort && @table_sort.field == String.to_existing_atom(@field) do %>
+          <span class="text-gray-600 text-sm">
+            <%= if @table_sort.direction == :asc do %>
+              ↑
+            <% else %>
+              ↓
+            <% end %>
+          </span>
+        <% else %>
+          <span class="text-gray-400 text-sm">↕</span>
+        <% end %>
+      </button>
+    </div>
+    """
+  end
+
+  # Component for filter badge display
+  attr :col, :map, required: true
+  attr :filters, :list, required: true
+
+  def filter_badge(assigns) do
+    ~H"""
+    <%= if Map.get(@col, :filterable) do %>
+      <% filter_config =
+        Enum.find(@filters, &(&1.key == String.to_atom(@col.filterable))) %>
+      <%= if filter_config && length(filter_config.selected_ids) > 0 do %>
+        <span class="inline-flex items-center px-1.5 py-0.5 rounded-full text-xs font-medium bg-indigo-100 text-indigo-800">
+          {length(filter_config.selected_ids)}
+        </span>
+      <% end %>
+    <% end %>
+    """
+  end
+
+  # Component for filter button
+  attr :col, :map, required: true
+  attr :filters, :list, required: true
+
+  def filter_button(assigns) do
+    ~H"""
+    <%= if Map.get(@col, :filterable) do %>
+      <button
+        type="button"
+        class={[
+          "hover:text-gray-600 ml-auto",
+          if(
+            Enum.find(@filters, &(&1.key == String.to_atom(@col.filterable)))
+            |> then(fn config -> config && length(config.selected_ids) > 0 end)
+          ) do
+            "text-indigo-600"
+          else
+            "text-gray-400"
+          end
+        ]}
+        phx-click={Phoenix.LiveView.JS.toggle(to: "#filter-dropdown-#{@col.filterable}")}
+        aria-label="Filter by #{@col.label}"
+      >
+        <.icon name="hero-funnel" class="w-4 h-4" />
+      </button>
+    <% end %>
     """
   end
 

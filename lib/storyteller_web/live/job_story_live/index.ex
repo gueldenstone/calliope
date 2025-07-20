@@ -22,6 +22,10 @@ defmodule StorytellerWeb.JobStoryLive.Index do
        sort_by: :overall,
        show_advanced_controls: false
      })
+     |> assign(:table_sort, %{
+       field: :inserted_at,
+       direction: :desc
+     })
      |> assign(:products, Products.list_products())
      |> assign(:users, Products.list_users())
      |> assign(:embeddings_ready, Embeddings.ready?())
@@ -61,14 +65,20 @@ defmodule StorytellerWeb.JobStoryLive.Index do
 
     job_stories = JobStories.list_job_stories(job_story_filters)
 
+    # Apply initial sorting
+    current_sort = socket.assigns.table_sort
+    sorted_job_stories = sort_job_stories(job_stories, current_sort)
+
     # Calculate similarity details for each job story if a reference story is selected
     job_stories_with_similarity =
       if similarity_search.reference_job_story_id do
         reference_job_story =
-          Enum.find(job_stories, fn js -> js.id == similarity_search.reference_job_story_id end)
+          Enum.find(sorted_job_stories, fn js ->
+            js.id == similarity_search.reference_job_story_id
+          end)
 
         if reference_job_story do
-          Enum.map(job_stories, fn job_story ->
+          Enum.map(sorted_job_stories, fn job_story ->
             similarity_details =
               calculate_similarity_details(
                 job_story,
@@ -79,10 +89,10 @@ defmodule StorytellerWeb.JobStoryLive.Index do
             {job_story, similarity_details}
           end)
         else
-          Enum.map(job_stories, fn job_story -> {job_story, nil} end)
+          Enum.map(sorted_job_stories, fn job_story -> {job_story, nil} end)
         end
       else
-        Enum.map(job_stories, fn job_story -> {job_story, nil} end)
+        Enum.map(sorted_job_stories, fn job_story -> {job_story, nil} end)
       end
 
     {:noreply,
@@ -90,7 +100,7 @@ defmodule StorytellerWeb.JobStoryLive.Index do
      |> assign(:filters, filters)
      |> assign(:similarity_search, similarity_search)
      |> assign(:job_stories_with_similarity, job_stories_with_similarity)
-     |> stream(:job_stories, job_stories, reset: true)
+     |> stream(:job_stories, sorted_job_stories, reset: true)
      |> apply_action(socket.assigns.live_action, params)}
   end
 
@@ -447,6 +457,46 @@ defmodule StorytellerWeb.JobStoryLive.Index do
     push_path_and_apply_filters(socket)
   end
 
+  @impl true
+  def handle_event("sort_table", %{"field" => field}, socket) do
+    field = String.to_existing_atom(field)
+    current_sort = socket.assigns.table_sort
+
+    new_direction =
+      if current_sort.field == field do
+        if current_sort.direction == :asc, do: :desc, else: :asc
+      else
+        :asc
+      end
+
+    new_sort = %{field: field, direction: new_direction}
+
+    # Get current job stories from the similarity data and sort them
+    job_stories =
+      Enum.map(socket.assigns.job_stories_with_similarity, fn {job_story, _similarity} ->
+        job_story
+      end)
+
+    sorted_job_stories = sort_job_stories(job_stories, new_sort)
+
+    # Rebuild the similarity data with sorted job stories
+    sorted_similarity_data =
+      Enum.map(sorted_job_stories, fn job_story ->
+        case Enum.find(socket.assigns.job_stories_with_similarity, fn {js, _} ->
+               js.id == job_story.id
+             end) do
+          {_found_job_story, similarity_details} -> {job_story, similarity_details}
+          nil -> {job_story, nil}
+        end
+      end)
+
+    {:noreply,
+     socket
+     |> assign(:table_sort, new_sort)
+     |> assign(:job_stories_with_similarity, sorted_similarity_data)
+     |> stream(:job_stories, sorted_job_stories, reset: true)}
+  end
+
   defp parse_list_param(nil), do: []
   defp parse_list_param(""), do: []
 
@@ -603,10 +653,12 @@ defmodule StorytellerWeb.JobStoryLive.Index do
   end
 
   # Helper functions for similarity score formatting and display
-  def format_similarity_score(similarity) do
+  def format_similarity_score(similarity) when is_number(similarity) do
     percentage = (similarity * 100) |> Float.round(1)
     "#{percentage}%"
   end
+
+  def format_similarity_score(_), do: "N/A"
 
   def get_component_color(score) when score >= 0.8, do: "bg-green-100 text-green-800"
   def get_component_color(score) when score >= 0.6, do: "bg-yellow-100 text-yellow-800"
@@ -615,6 +667,18 @@ defmodule StorytellerWeb.JobStoryLive.Index do
   # Helper function for formatting dates
   def format_date(date) do
     Calendar.strftime(date, "%b %d, %Y")
+  end
+
+  # Helper function to get sort icon
+  def get_sort_icon(field, current_sort) do
+    if current_sort.field == field do
+      case current_sort.direction do
+        :asc -> "↑"
+        :desc -> "↓"
+      end
+    else
+      "↕"
+    end
   end
 
   # Calculate similarity details for a job story against the reference story
@@ -644,5 +708,23 @@ defmodule StorytellerWeb.JobStoryLive.Index do
   # Check if embeddings are valid
   defp has_valid_embeddings?(embeddings) do
     embeddings.situation != nil and embeddings.motivation != nil and embeddings.outcome != nil
+  end
+
+  # Sort job stories by the specified field and direction
+  defp sort_job_stories(job_stories, %{field: field, direction: direction}) do
+    Enum.sort_by(
+      job_stories,
+      fn job_story ->
+        case field do
+          :inserted_at -> job_story.inserted_at
+          :title -> job_story.title
+          :situation -> job_story.situation
+          :motivation -> job_story.motivation
+          :outcome -> job_story.outcome
+          _ -> job_story.inserted_at
+        end
+      end,
+      direction
+    )
   end
 end
