@@ -24,6 +24,7 @@ defmodule StorytellerWeb.Router do
     pipe_through :browser
     live "/", JobStoryLive.Index, :index
     live "/new", JobStoryLive.Index, :new
+    live "/similar", JobStoryLive.Similar, :index
     live "/:id/edit", JobStoryLive.Index, :edit
 
     live "/:id", JobStoryLive.Show, :show

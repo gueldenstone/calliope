@@ -4,6 +4,7 @@ defmodule Storyteller.JobStories do
   """
 
   import Ecto.Query, warn: false
+  require Logger
   alias Storyteller.Repo
 
   alias Storyteller.JobStories.JobStory
@@ -126,20 +127,18 @@ defmodule Storyteller.JobStories do
   ## Examples
 
       iex> get_job_story!(123)
-      %JobStory{products: [%Product{}, ...]}
+      %JobStory{}
 
       iex> get_job_story!(456)
       ** (Ecto.NoResultsError)
 
   """
   def get_job_story!(id) do
-    JobStory
-    |> preload(^@job_story_associations)
-    |> Repo.get!(id)
+    Repo.get!(JobStory, id) |> Repo.preload(@job_story_associations)
   end
 
   @doc """
-  Creates a job_story.
+  Creates a job_story and generates embeddings for it.
 
   ## Examples
 
@@ -151,12 +150,14 @@ defmodule Storyteller.JobStories do
 
   """
   def create_job_story(attrs \\ %{}) do
-    case %JobStory{}
-         |> JobStory.changeset(attrs)
-         |> Repo.insert() do
+    %JobStory{}
+    |> JobStory.changeset(attrs)
+    |> Repo.insert()
+    |> case do
       {:ok, job_story} ->
-        # Reload with products preloaded
-        {:ok, get_job_story!(job_story.id)}
+        # Generate embeddings for the new job story
+        job_story_with_associations = Repo.preload(job_story, @job_story_associations)
+        generate_and_store_embeddings(job_story_with_associations)
 
       error ->
         error
@@ -164,7 +165,7 @@ defmodule Storyteller.JobStories do
   end
 
   @doc """
-  Updates a job_story.
+  Updates a job_story and regenerates embeddings if the text content changed.
 
   ## Examples
 
@@ -176,12 +177,19 @@ defmodule Storyteller.JobStories do
 
   """
   def update_job_story(%JobStory{} = job_story, attrs) do
-    case job_story
-         |> JobStory.changeset(attrs)
-         |> Repo.update() do
-      {:ok, job_story} ->
-        # Reload with products preloaded
-        {:ok, get_job_story!(job_story.id)}
+    job_story_with_associations = Repo.preload(job_story, @job_story_associations)
+
+    job_story_with_associations
+    |> JobStory.changeset(attrs)
+    |> Repo.update()
+    |> case do
+      {:ok, updated_job_story} ->
+        # Check if text content changed and regenerate embeddings if needed
+        if text_content_changed?(job_story_with_associations, updated_job_story) do
+          generate_and_store_embeddings(updated_job_story)
+        else
+          {:ok, updated_job_story}
+        end
 
       error ->
         error
@@ -306,5 +314,70 @@ defmodule Storyteller.JobStories do
     JobStory
     |> where([j], j.id in ^ids)
     |> Repo.all()
+  end
+
+  @doc """
+  Generates and stores embeddings for a job story.
+  This function is called automatically when job stories are created or updated.
+  """
+  def generate_and_store_embeddings(%JobStory{} = job_story) do
+    case Storyteller.EmbeddingsService.get_serving() do
+      {:ok, serving} ->
+        case Storyteller.Embeddings.generate_job_story_component_embeddings(job_story, serving) do
+          {:ok, embeddings} ->
+            # Update the job story with the new embeddings
+            job_story
+            |> JobStory.embedding_changeset(embeddings)
+            |> Repo.update()
+
+          {:error, reason} ->
+            Logger.error("Failed to generate embeddings for job story #{job_story.id}: #{reason}")
+            # Return the job story without embeddings
+            {:ok, job_story}
+        end
+
+      {:error, reason} ->
+        Logger.error("Failed to get embeddings service: #{reason}")
+        # Return the job story without embeddings
+        {:ok, job_story}
+    end
+  end
+
+  @doc """
+  Checks if the text content of a job story has changed.
+  """
+  defp text_content_changed?(old_job_story, new_job_story) do
+    old_job_story.situation != new_job_story.situation or
+      old_job_story.motivation != new_job_story.motivation or
+      old_job_story.outcome != new_job_story.outcome
+  end
+
+  @doc """
+  Regenerates embeddings for all job stories that don't have up-to-date embeddings.
+  This is useful for bulk updates or after model changes.
+  """
+  def regenerate_all_embeddings do
+    # Get all job stories that need embedding updates
+    associations = @job_story_associations
+
+    job_stories =
+      JobStory
+      |> where([j], is_nil(j.embeddings_updated_at))
+      |> or_where([j], j.embeddings_updated_at < ago(1, "hour"))
+      |> preload(^associations)
+      |> Repo.all()
+
+    Logger.info("Regenerating embeddings for #{length(job_stories)} job stories")
+
+    Enum.reduce_while(job_stories, {:ok, 0}, fn job_story, {:ok, count} ->
+      case generate_and_store_embeddings(job_story) do
+        {:ok, _updated_job_story} ->
+          {:cont, {:ok, count + 1}}
+
+        {:error, reason} ->
+          Logger.error("Failed to regenerate embeddings for job story #{job_story.id}: #{reason}")
+          {:cont, {:ok, count}}
+      end
+    end)
   end
 end

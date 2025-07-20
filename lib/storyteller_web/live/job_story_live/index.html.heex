@@ -1,7 +1,12 @@
 <.header>
   Job stories
   <:actions>
-    <.link patch={~p"/job_stories/new?#{build_filter_params(@search_term, @selected_product_ids, @selected_user_ids)}"}>
+    <.link navigate={~p"/job_stories/similar"}>
+      <.button>Explore Similar Stories</.button>
+    </.link>
+    <.link patch={
+      ~p"/job_stories/new?#{build_filter_params(@search_term, @selected_product_ids, @selected_user_ids)}"
+    }>
       <.button>New Job story</.button>
     </.link>
   </:actions>
@@ -65,7 +70,11 @@
     <div class="sr-only">
       <.link navigate={~p"/job_stories/#{job_story}"}>Show</.link>
     </div>
-    <.link patch={~p"/job_stories/#{job_story}/edit?#{build_filter_params(@search_term, @selected_product_ids, @selected_user_ids)}"}>Edit</.link>
+    <.link patch={
+      ~p"/job_stories/#{job_story}/edit?#{build_filter_params(@search_term, @selected_product_ids, @selected_user_ids)}"
+    }>
+      Edit
+    </.link>
   </:action>
   <:action :let={{_id, job_story}}>
     <.link
