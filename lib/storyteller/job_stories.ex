@@ -22,6 +22,31 @@ defmodule Storyteller.JobStories do
   end
 
   @doc """
+  Returns the list of job_stories filtered by search term.
+
+  ## Examples
+
+      iex> list_job_stories("user")
+      [%JobStory{}, ...]
+
+  """
+  def list_job_stories(search_term) when is_binary(search_term) and search_term != "" do
+    search_pattern = "%#{search_term}%"
+
+    JobStory
+    |> where(
+      [j],
+      ilike(j.title, ^search_pattern) or
+        ilike(j.situation, ^search_pattern) or
+        ilike(j.motivation, ^search_pattern) or
+        ilike(j.outcome, ^search_pattern)
+    )
+    |> Repo.all()
+  end
+
+  def list_job_stories(_), do: list_job_stories()
+
+  @doc """
   Gets a single job_story.
 
   Raises `Ecto.NoResultsError` if the Job story does not exist.

@@ -7,6 +7,28 @@
   </:actions>
 </.header>
 
+<div class="mb-6">
+  <form phx-change="search" phx-submit-ignore class="flex gap-2 items-end">
+    <div class="flex-1 max-w-md">
+      <.input
+        type="text"
+        name="search_term"
+        value={@search_term}
+        placeholder="Search job stories..."
+        phx-debounce="300"
+      />
+    </div>
+    <div class="flex gap-2">
+      <.button type="submit" phx-disable-with="Searching...">
+        Search
+      </.button>
+      <.button :if={@search_term != ""} type="button" phx-click="clear_search">
+        Clear
+      </.button>
+    </div>
+  </form>
+</div>
+
 <.table
   id="job_stories"
   rows={@streams.job_stories}

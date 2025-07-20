@@ -6,12 +6,21 @@ defmodule StorytellerWeb.JobStoryLive.Index do
 
   @impl true
   def mount(_params, _session, socket) do
-    {:ok, stream(socket, :job_stories, JobStories.list_job_stories())}
+    {:ok,
+     socket
+     |> assign(:search_term, "")
+     |> stream(:job_stories, JobStories.list_job_stories())}
   end
 
   @impl true
   def handle_params(params, _url, socket) do
-    {:noreply, apply_action(socket, socket.assigns.live_action, params)}
+    search_term = params["search"] || ""
+
+    {:noreply,
+     socket
+     |> assign(:search_term, search_term)
+     |> stream(:job_stories, JobStories.list_job_stories(search_term), reset: true)
+     |> apply_action(socket.assigns.live_action, params)}
   end
 
   defp apply_action(socket, :edit, %{"id" => id}) do
@@ -43,5 +52,15 @@ defmodule StorytellerWeb.JobStoryLive.Index do
     {:ok, _} = JobStories.delete_job_story(job_story)
 
     {:noreply, stream_delete(socket, :job_stories, job_story)}
+  end
+
+  @impl true
+  def handle_event("search", %{"search_term" => search_term}, socket) do
+    {:noreply, push_patch(socket, to: ~p"/job_stories?#{%{search: search_term}}")}
+  end
+
+  @impl true
+  def handle_event("clear_search", _params, socket) do
+    {:noreply, push_patch(socket, to: ~p"/job_stories")}
   end
 end
