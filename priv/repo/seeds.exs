@@ -15,6 +15,7 @@
 alias Storyteller.Repo
 alias Storyteller.JobStories.JobStory
 alias Storyteller.Products.Product
+alias Storyteller.Products.Market
 
 # Clear existing data
 Repo.delete_all(JobStory)
@@ -139,50 +140,17 @@ Enum.each(job_stories, fn job_story_attrs ->
   |> Repo.insert!()
 end)
 
-IO.puts("✅ Created #{length(products)} products")
-IO.puts("✅ Created #{length(job_stories)} job stories with product associations")
+markets = [
+  %{
+    name: "Market 1"
+  },
+  %{
+    name: "Market 2"
+  }
+]
 
-# Demonstrate the many-to-many relationship
-IO.puts("\n🔗 Many-to-Many Relationship Examples:")
-IO.puts("=====================================")
-
-# Get a job story with products using the context function
-job_story_with_products = Storyteller.JobStories.list_job_stories() |> List.first()
-
-if job_story_with_products do
-  IO.puts("Job Story: #{job_story_with_products.title}")
-  IO.puts("Associated Products:")
-
-  Enum.each(job_story_with_products.products, fn product ->
-    IO.puts("  - #{product.name}: #{product.description}")
-  end)
-end
-
-# Get a product with job stories using the context function
-product_with_job_stories = Storyteller.Products.list_products() |> List.first()
-
-if product_with_job_stories do
-  IO.puts("\nProduct: #{product_with_job_stories.name}")
-  IO.puts("Associated Job Stories:")
-
-  # Get job stories for this product using the context function
-  job_stories_for_product =
-    Storyteller.JobStories.get_job_stories_by_product(product_with_job_stories)
-
-  if Enum.empty?(job_stories_for_product) do
-    IO.puts("  - No associated job stories")
-  else
-    Enum.each(job_stories_for_product, fn job_story ->
-      IO.puts("  - #{job_story.title}")
-    end)
-  end
-end
-
-IO.puts("\n🎉 Many-to-many relationship setup complete!")
-IO.puts("You can now:")
-IO.puts("  - Associate job stories with products")
-IO.puts("  - Query job stories by product")
-IO.puts("  - Query products by job story")
-IO.puts("  - Use the context functions like:")
-IO.puts("    - Storyteller.JobStories.list_job_stories()")
-IO.puts("    - Storyteller.Products.list_products()")
+Enum.each(markets, fn market_attrs ->
+  %Market{}
+  |> Market.changeset(market_attrs)
+  |> Repo.insert!()
+end)

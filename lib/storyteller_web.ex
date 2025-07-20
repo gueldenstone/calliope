@@ -89,6 +89,8 @@ defmodule StorytellerWeb do
       import Phoenix.HTML
       # Core UI components
       import StorytellerWeb.CoreComponents
+      # Custom UI components
+      import StorytellerWeb.UIComponents
 
       # Shortcut for generating JS commands
       alias Phoenix.LiveView.JS

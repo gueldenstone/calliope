@@ -14,6 +14,9 @@
 >
   <:col :let={{_id, user}} label="Pseudonym">{user.pseudonym}</:col>
   <:col :let={{_id, user}} label="Type">{user.type}</:col>
+  <:col :let={{_id, user}} label="Markets">
+    <.associated_items items={user.markets} name_field={:name} empty_text="No markets" />
+  </:col>
   <:action :let={{_id, user}}>
     <div class="sr-only">
       <.link navigate={~p"/users/#{user}"}>Show</.link>

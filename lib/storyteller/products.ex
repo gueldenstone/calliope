@@ -292,7 +292,9 @@ defmodule Storyteller.Products do
 
   """
   def list_users do
-    Repo.all(User)
+    User
+    |> preload(:markets)
+    |> Repo.all()
   end
 
   @doc """
@@ -309,7 +311,11 @@ defmodule Storyteller.Products do
       ** (Ecto.NoResultsError)
 
   """
-  def get_user!(id), do: Repo.get!(User, id)
+  def get_user!(id) do
+    User
+    |> preload(:markets)
+    |> Repo.get!(id)
+  end
 
   @doc """
   Creates a user.
@@ -374,5 +380,35 @@ defmodule Storyteller.Products do
   """
   def change_user(%User{} = user, attrs \\ %{}) do
     User.changeset(user, attrs)
+  end
+
+  @doc """
+  Gets users by their IDs.
+
+  ## Examples
+
+      iex> list_users_by_ids(["id1", "id2"])
+      [%User{}, ...]
+
+  """
+  def list_users_by_ids(ids) when is_list(ids) do
+    User
+    |> where([u], u.id in ^ids)
+    |> Repo.all()
+  end
+
+  @doc """
+  Gets markets by their IDs.
+
+  ## Examples
+
+      iex> list_markets_by_ids(["id1", "id2"])
+      [%Market{}, ...]
+
+  """
+  def list_markets_by_ids(ids) when is_list(ids) do
+    Market
+    |> where([m], m.id in ^ids)
+    |> Repo.all()
   end
 end
