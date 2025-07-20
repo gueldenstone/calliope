@@ -596,11 +596,9 @@ defmodule Storyteller.Embeddings do
   # Private Functions
   # ============================================================================
 
-  @doc """
-  Filters job stories by minimum similarity scores for specific components.
-  Each component is filtered independently based on its percentage score.
-  min_scores should be provided as percentages (0-100).
-  """
+  # Filters job stories by minimum similarity scores for specific components.
+  # Each component is filtered independently based on its percentage score.
+  # min_scores should be provided as percentages (0-100).
   defp filter_by_min_scores(job_stories_with_scores, min_scores) do
     Enum.filter(job_stories_with_scores, fn {_job_story, scores} ->
       Enum.all?(min_scores, fn {component, min_percentage} ->

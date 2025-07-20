@@ -343,9 +343,7 @@ defmodule Storyteller.JobStories do
     end
   end
 
-  @doc """
-  Checks if the text content of a job story has changed.
-  """
+  # Checks if the text content of a job story has changed.
   defp text_content_changed?(old_job_story, new_job_story) do
     old_job_story.situation != new_job_story.situation or
       old_job_story.motivation != new_job_story.motivation or

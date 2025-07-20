@@ -61,21 +61,6 @@ defmodule Storyteller.EmbeddingsService do
   end
 
   @impl true
-  def handle_call(:get_serving, _from, %{serving: serving, ready: true} = state) do
-    {:reply, {:ok, serving}, state}
-  end
-
-  @impl true
-  def handle_call(:get_serving, _from, %{ready: false} = state) do
-    {:reply, {:error, "Embeddings service not ready"}, state}
-  end
-
-  @impl true
-  def handle_call(:ready?, _from, %{ready: ready} = state) do
-    {:reply, ready, state}
-  end
-
-  @impl true
   def handle_info(:retry_init, _state) do
     Logger.info("Retrying embeddings service initialization...")
 
@@ -90,6 +75,21 @@ defmodule Storyteller.EmbeddingsService do
         Process.send_after(self(), :retry_init, 10000)
         {:noreply, %{model_info: nil, tokenizer: nil, serving: nil, ready: false}}
     end
+  end
+
+  @impl true
+  def handle_call(:get_serving, _from, %{serving: serving, ready: true} = state) do
+    {:reply, {:ok, serving}, state}
+  end
+
+  @impl true
+  def handle_call(:get_serving, _from, %{ready: false} = state) do
+    {:reply, {:error, "Embeddings service not ready"}, state}
+  end
+
+  @impl true
+  def handle_call(:ready?, _from, %{ready: ready} = state) do
+    {:reply, ready, state}
   end
 
   @impl true

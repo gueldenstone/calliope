@@ -87,6 +87,13 @@
       Delete
     </.link>
   </:action>
+  <:action :let={{_id, job_story}}>
+    <.link navigate={~p"/job_stories/similar?job_story_id=#{job_story.id}"}>
+      <.button size="sm" variant="outline">
+        Find Similar
+      </.button>
+    </.link>
+  </:action>
 </.filterable_table>
 
 <.modal
