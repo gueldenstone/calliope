@@ -55,7 +55,9 @@ defmodule Storyteller.MixProject do
       {:gettext, "~> 0.26"},
       {:jason, "~> 1.2"},
       {:dns_cluster, "~> 0.1.1"},
-      {:bandit, "~> 1.5"}
+      {:bandit, "~> 1.5"},
+      {:emlx, github: "elixir-nx/emlx", branch: "main"},
+      {:bumblebee, "~> 0.6.0"}
     ]
   end
 

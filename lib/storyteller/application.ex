@@ -12,6 +12,8 @@ defmodule Storyteller.Application do
       Storyteller.Repo,
       {DNSCluster, query: Application.get_env(:storyteller, :dns_cluster_query) || :ignore},
       {Phoenix.PubSub, name: Storyteller.PubSub},
+      # Start the embeddings service
+      Storyteller.EmbeddingsService,
       # Start a worker by calling: Storyteller.Worker.start_link(arg)
       # {Storyteller.Worker, arg},
       # Start to serve requests, typically the last entry
