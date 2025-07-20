@@ -113,17 +113,10 @@ defmodule Storyteller.JobStories do
 
     # Apply similarity-based ordering if reference story is provided
     if reference_job_story_id do
-      IO.inspect(reference_job_story_id, label: "Reference job story ID")
-      IO.inspect(similarity_weights, label: "Similarity weights")
-      IO.inspect(min_scores, label: "Min scores")
-      IO.inspect(sort_by, label: "Sort by")
-
       reference_job_story = Enum.find(job_stories, fn js -> js.id == reference_job_story_id end)
 
       if reference_job_story do
-        IO.inspect(reference_job_story.title, label: "Reference job story title")
         other_stories = Enum.reject(job_stories, fn js -> js.id == reference_job_story.id end)
-        IO.inspect(length(other_stories), label: "Number of other stories")
 
         similar_stories =
           Storyteller.Embeddings.find_similar_to_job_story_enhanced_service(
@@ -134,8 +127,6 @@ defmodule Storyteller.JobStories do
             sort_by: sort_by,
             limit: 1000
           )
-
-        IO.inspect(length(similar_stories), label: "Number of similar stories found")
 
         # Extract job stories in similarity order, excluding the reference story
         ordered_stories =

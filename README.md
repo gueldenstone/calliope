@@ -1,4 +1,8 @@
-# Storyteller
+# Calliope
+
+Calliope is named after the Muse of epic poetry in Greek mythology — the goddess who inspired heroes to tell their greatest stories. Just as she guided ancient bards in shaping their narratives, Calliope helps product teams capture and organize job stories that matter.
+
+Designed to bridge user needs with meaningful outcomes, Calliope turns fragmented insights into clear, structured narratives — aligning product thinking with real-world context.
 
 To start your Phoenix server:
 
@@ -7,12 +11,4 @@ To start your Phoenix server:
 
 Now you can visit [`localhost:4000`](http://localhost:4000) from your browser.
 
-Ready to run in production? Please [check our deployment guides](https://hexdocs.pm/phoenix/deployment.html).
 
-## Learn more
-
-  * Official website: https://www.phoenixframework.org/
-  * Guides: https://hexdocs.pm/phoenix/overview.html
-  * Docs: https://hexdocs.pm/phoenix
-  * Forum: https://elixirforum.com/c/phoenix-forum
-  * Source: https://github.com/phoenixframework/phoenix
