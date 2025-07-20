@@ -10,5 +10,7 @@ defmodule StorytellerWeb.Layouts do
   """
   use StorytellerWeb, :html
 
+  import StorytellerWeb.UIComponents
+
   embed_templates "layouts/*"
 end

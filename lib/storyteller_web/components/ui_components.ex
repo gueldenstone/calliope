@@ -55,4 +55,16 @@ defmodule StorytellerWeb.UIComponents do
     </.link>
     """
   end
+
+  attr :class, :any, default: nil
+  attr :rest, :global, include: ~w(patch href navigate)
+  slot :inner_block, required: true
+
+  def a(assigns) do
+    ~H"""
+    <.link class={["hover:opacity-50 transition-opacity", @class]} {@rest}>
+      {render_slot(@inner_block)}
+    </.link>
+    """
+  end
 end
