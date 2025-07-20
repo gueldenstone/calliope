@@ -1,5 +1,5 @@
 <.header>
-  Listing Job stories
+  Job stories
   <:actions>
     <.link patch={~p"/job_stories/new"}>
       <.button>New Job story</.button>
@@ -13,9 +13,11 @@
   row_click={fn {_id, job_story} -> JS.navigate(~p"/job_stories/#{job_story}") end}
 >
   <:col :let={{_id, job_story}} label="Title">{job_story.title}</:col>
-  <:col :let={{_id, job_story}} label="Situation">{job_story.situation}</:col>
-  <:col :let={{_id, job_story}} label="Motivation">{job_story.motivation}</:col>
-  <:col :let={{_id, job_story}} label="Outcome">{job_story.outcome}</:col>
+  <:col :let={{_id, job_story}} label="Story">
+    <strong>When</strong> {job_story.situation}<br />
+    <strong>I want to</strong> {job_story.motivation}<br />
+    <strong>so that</strong> {job_story.outcome}
+  </:col>
   <:action :let={{_id, job_story}}>
     <div class="sr-only">
       <.link navigate={~p"/job_stories/#{job_story}"}>Show</.link>
@@ -32,7 +34,12 @@
   </:action>
 </.table>
 
-<.modal :if={@live_action in [:new, :edit]} id="job_story-modal" show on_cancel={JS.patch(~p"/job_stories")}>
+<.modal
+  :if={@live_action in [:new, :edit]}
+  id="job_story-modal"
+  show
+  on_cancel={JS.patch(~p"/job_stories")}
+>
   <.live_component
     module={StorytellerWeb.JobStoryLive.FormComponent}
     id={@job_story.id || :new}
