@@ -1,38 +1,48 @@
 <.header>
   Job stories
   <:actions>
-    <.link patch={~p"/job_stories/new"}>
+    <.link patch={~p"/job_stories/new?#{build_filter_params(@search_term, @selected_product_ids, @selected_user_ids)}"}>
       <.button>New Job story</.button>
     </.link>
   </:actions>
 </.header>
 
 <div class="mb-6">
-  <form phx-change="search" phx-submit-ignore class="flex gap-2 items-end">
-    <div class="flex-1 max-w-md">
-      <.input
-        type="text"
-        name="search_term"
-        value={@search_term}
-        placeholder="Search job stories..."
-        phx-debounce="300"
-      />
-    </div>
-    <div class="flex gap-2">
-      <.button type="submit" phx-disable-with="Searching...">
-        Search
-      </.button>
-      <.button :if={@search_term != ""} type="button" phx-click="clear_search">
-        Clear
-      </.button>
+  <form phx-change="search" phx-submit-ignore class="space-y-4">
+    <!-- Search Section -->
+    <div class="flex gap-2 items-end">
+      <div class="flex-1 max-w-md">
+        <.input
+          type="text"
+          name="search"
+          value={@search_term}
+          placeholder="Search job stories..."
+          phx-debounce="300"
+        />
+      </div>
+      <div class="flex gap-2">
+        <.button type="submit" phx-disable-with="Searching...">
+          Search
+        </.button>
+        <.button :if={@search_term != ""} type="button" phx-click="clear_search">
+          Clear
+        </.button>
+      </div>
     </div>
   </form>
 </div>
 
-<.table
+<.filterable_table
   id="job_stories"
   rows={@streams.job_stories}
-  row_click={fn {_id, job_story} -> JS.navigate(~p"/job_stories/#{job_story}") end}
+  filters={[
+    %{key: :products, items: @products, name_field: :name, selected_ids: @selected_product_ids},
+    %{key: :users, items: @users, name_field: :pseudonym, selected_ids: @selected_user_ids}
+  ]}
+  phx_change="filter_change"
+  row_click={
+    fn {_id, job_story} -> Phoenix.LiveView.JS.navigate(~p"/job_stories/#{job_story}") end
+  }
 >
   <:col :let={{_id, job_story}} label="Title">{job_story.title}</:col>
   <:col :let={{_id, job_story}} label="Story">
@@ -40,10 +50,10 @@
     <strong>I want to</strong> {job_story.motivation}<br />
     <strong>so that</strong> {job_story.outcome}
   </:col>
-  <:col :let={{_id, job_story}} label="Products">
+  <:col :let={{_id, job_story}} label="Products" filterable="products">
     <.associated_items items={job_story.products} name_field={:name} empty_text="No products" />
   </:col>
-  <:col :let={{_id, job_story}} label="Users">
+  <:col :let={{_id, job_story}} label="Users" filterable="users">
     <.associated_items
       items={job_story.users}
       name_field={:pseudonym}
@@ -55,23 +65,30 @@
     <div class="sr-only">
       <.link navigate={~p"/job_stories/#{job_story}"}>Show</.link>
     </div>
-    <.link patch={~p"/job_stories/#{job_story}/edit"}>Edit</.link>
+    <.link patch={~p"/job_stories/#{job_story}/edit?#{build_filter_params(@search_term, @selected_product_ids, @selected_user_ids)}"}>Edit</.link>
   </:action>
-  <:action :let={{id, job_story}}>
+  <:action :let={{_id, job_story}}>
     <.link
-      phx-click={JS.push("delete", value: %{id: job_story.id}) |> hide("##{id}")}
+      phx-click={
+        Phoenix.LiveView.JS.push("delete", value: %{id: job_story.id})
+        |> Phoenix.LiveView.JS.hide()
+      }
       data-confirm="Are you sure?"
     >
       Delete
     </.link>
   </:action>
-</.table>
+</.filterable_table>
 
 <.modal
   :if={@live_action in [:new, :edit]}
   id="job_story-modal"
   show
-  on_cancel={JS.patch(~p"/job_stories")}
+  on_cancel={
+    Phoenix.LiveView.JS.patch(
+      ~p"/job_stories?#{build_filter_params(@search_term, @selected_product_ids, @selected_user_ids)}"
+    )
+  }
 >
   <.live_component
     module={StorytellerWeb.JobStoryLive.FormComponent}
@@ -79,6 +96,8 @@
     title={@page_title}
     action={@live_action}
     job_story={@job_story}
-    patch={~p"/job_stories"}
+    patch={
+      ~p"/job_stories?#{build_filter_params(@search_term, @selected_product_ids, @selected_user_ids)}"
+    }
   />
 </.modal>

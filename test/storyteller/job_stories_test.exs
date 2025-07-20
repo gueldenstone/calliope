@@ -107,5 +107,153 @@ defmodule Storyteller.JobStoriesTest do
       assert length(retrieved_job_story.products) == 1
       assert hd(retrieved_job_story.products).id == product.id
     end
+
+    test "list_job_stories/1 with search term filters correctly" do
+      job_story1 = job_story_fixture(%{title: "User Authentication", situation: "login process"})
+      job_story2 = job_story_fixture(%{title: "Data Export", situation: "export process"})
+
+      # Search by title
+      results = JobStories.list_job_stories("User")
+      assert length(results) == 1
+      assert hd(results).id == job_story1.id
+
+      # Search by situation
+      results = JobStories.list_job_stories("export")
+      assert length(results) == 1
+      assert hd(results).id == job_story2.id
+    end
+
+    test "list_job_stories/1 with product filter works correctly" do
+      product1 = product_fixture(%{name: "Product A"})
+      product2 = product_fixture(%{name: "Product B"})
+
+      job_story1 = job_story_fixture(%{product_ids: [product1.id]})
+      job_story2 = job_story_fixture(%{product_ids: [product2.id]})
+      job_story3 = job_story_fixture(%{product_ids: [product1.id, product2.id]})
+
+      # Filter by product1
+      results = JobStories.list_job_stories(%{"product_ids" => [product1.id]})
+      assert length(results) == 2
+      assert Enum.any?(results, fn js -> js.id == job_story1.id end)
+      assert Enum.any?(results, fn js -> js.id == job_story3.id end)
+
+      # Filter by product2
+      results = JobStories.list_job_stories(%{"product_ids" => [product2.id]})
+      assert length(results) == 2
+      assert Enum.any?(results, fn js -> js.id == job_story2.id end)
+      assert Enum.any?(results, fn js -> js.id == job_story3.id end)
+    end
+
+    test "list_job_stories/1 with combined filters works correctly" do
+      product = product_fixture(%{name: "Test Product"})
+      user = user_fixture(%{pseudonym: "Test User"})
+
+      # Create job story first
+      job_story_attrs = %{
+        title: "User Login",
+        situation: "test situation",
+        motivation: "test motivation",
+        outcome: "test outcome"
+      }
+
+      {:ok, job_story1} = JobStories.create_job_story(job_story_attrs)
+
+      # Associate products separately
+      JobStories.associate_products_with_job_story(job_story1, [product])
+
+      # Create another job story without the search term
+      _job_story2 =
+        job_story_fixture(%{
+          title: "Data Export",
+          product_ids: [product.id]
+        })
+
+      # Associate users with job stories
+      JobStories.associate_users_with_job_story(job_story1, [user])
+
+      # Filter by product and search term
+      results =
+        JobStories.list_job_stories(%{
+          "search" => "Login",
+          "product_ids" => [product.id]
+        })
+
+      assert length(results) == 1
+      assert hd(results).id == job_story1.id
+    end
+
+    test "list_job_stories/1 with multiple products uses OR logic" do
+      product1 = product_fixture(%{name: "Product A"})
+      product2 = product_fixture(%{name: "Product B"})
+
+      # Create job story associated with product1
+      job_story1 = job_story_fixture(%{product_ids: [product1.id]})
+
+      # Create job story associated with product2
+      job_story2 = job_story_fixture(%{product_ids: [product2.id]})
+
+      # Create job story associated with both products
+      job_story3 = job_story_fixture(%{product_ids: [product1.id, product2.id]})
+
+      # Filter by both products - should return all 3 job stories (OR logic)
+      results = JobStories.list_job_stories(%{"product_ids" => [product1.id, product2.id]})
+
+      assert length(results) == 3
+      assert Enum.any?(results, fn js -> js.id == job_story1.id end)
+      assert Enum.any?(results, fn js -> js.id == job_story2.id end)
+      assert Enum.any?(results, fn js -> js.id == job_story3.id end)
+    end
+
+    test "list_job_stories/1 with multiple users uses OR logic" do
+      user1 = user_fixture(%{pseudonym: "User A"})
+      user2 = user_fixture(%{pseudonym: "User B"})
+
+      # Create job story associated with user1
+      job_story1 = job_story_fixture()
+      JobStories.associate_users_with_job_story(job_story1, [user1])
+
+      # Create job story associated with user2
+      job_story2 = job_story_fixture()
+      JobStories.associate_users_with_job_story(job_story2, [user2])
+
+      # Create job story associated with both users
+      job_story3 = job_story_fixture()
+      JobStories.associate_users_with_job_story(job_story3, [user1, user2])
+
+      # Filter by both users - should return all 3 job stories (OR logic)
+      results = JobStories.list_job_stories(%{"user_ids" => [user1.id, user2.id]})
+
+      assert length(results) == 3
+      assert Enum.any?(results, fn js -> js.id == job_story1.id end)
+      assert Enum.any?(results, fn js -> js.id == job_story2.id end)
+      assert Enum.any?(results, fn js -> js.id == job_story3.id end)
+    end
+
+    test "list_job_stories/1 with both product and user filters (AND logic)" do
+      product = product_fixture(%{name: "Test Product"})
+      user = user_fixture(%{pseudonym: "Test User"})
+
+      # Create a job story with both product and user
+      job_story = job_story_fixture(%{product_ids: [product.id]})
+      {:ok, job_story_with_users} = JobStories.associate_users_with_job_story(job_story, [user])
+      job_story = job_story_with_users
+
+      # Create another job story with only the product
+      _job_story_product_only = job_story_fixture(%{product_ids: [product.id]})
+
+      # Create another job story with only the user
+      job_story_user_only = job_story_fixture()
+      JobStories.associate_users_with_job_story(job_story_user_only, [user])
+
+      # Filter by both product and user - should return only the job story with both
+      results =
+        JobStories.list_job_stories(%{
+          "product_ids" => [product.id],
+          "user_ids" => [user.id]
+        })
+
+      assert length(results) == 1
+      assert hd(results).id == job_story.id
+    end
   end
 end
