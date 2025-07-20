@@ -60,6 +60,16 @@ defmodule Storyteller.JobStories do
     search_term = filters["search"] || filters[:search]
     product_ids = filters["product_ids"] || filters[:product_ids]
     user_ids = filters["user_ids"] || filters[:user_ids]
+    reference_job_story_id = filters["reference_job_story_id"] || filters[:reference_job_story_id]
+
+    similarity_weights =
+      filters["similarity_weights"] || filters[:similarity_weights] ||
+        %{situation: 0.4, motivation: 0.3, outcome: 0.3}
+
+    min_scores =
+      filters["min_scores"] || filters[:min_scores] || %{situation: 0, motivation: 0, outcome: 0}
+
+    sort_by = filters["sort_by"] || filters[:sort_by] || :overall
 
     query = JobStory
 
@@ -96,9 +106,50 @@ defmodule Storyteller.JobStories do
     # Apply distinct to remove duplicates from joins
     query = distinct(query, [j], j.id)
 
-    query
-    |> preload(^@job_story_associations)
-    |> Repo.all()
+    job_stories =
+      query
+      |> preload(^@job_story_associations)
+      |> Repo.all()
+
+    # Apply similarity-based ordering if reference story is provided
+    if reference_job_story_id do
+      IO.inspect(reference_job_story_id, label: "Reference job story ID")
+      IO.inspect(similarity_weights, label: "Similarity weights")
+      IO.inspect(min_scores, label: "Min scores")
+      IO.inspect(sort_by, label: "Sort by")
+
+      reference_job_story = Enum.find(job_stories, fn js -> js.id == reference_job_story_id end)
+
+      if reference_job_story do
+        IO.inspect(reference_job_story.title, label: "Reference job story title")
+        other_stories = Enum.reject(job_stories, fn js -> js.id == reference_job_story.id end)
+        IO.inspect(length(other_stories), label: "Number of other stories")
+
+        similar_stories =
+          Storyteller.Embeddings.find_similar_to_job_story_enhanced_service(
+            reference_job_story,
+            other_stories,
+            weights: similarity_weights,
+            min_scores: min_scores,
+            sort_by: sort_by,
+            limit: 1000
+          )
+
+        IO.inspect(length(similar_stories), label: "Number of similar stories found")
+
+        # Extract job stories in similarity order, excluding the reference story
+        ordered_stories =
+          Enum.map(similar_stories, fn {job_story, _similarity_details} -> job_story end)
+
+        # Put reference story first, then similar stories
+        [reference_job_story | ordered_stories]
+      else
+        IO.inspect("Reference job story not found", label: "ERROR")
+        job_stories
+      end
+    else
+      job_stories
+    end
   end
 
   def list_job_stories(_), do: list_job_stories()

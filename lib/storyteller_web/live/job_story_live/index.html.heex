@@ -1,12 +1,7 @@
 <.header>
   Job stories
   <:actions>
-    <.link navigate={~p"/job_stories/similar"}>
-      <.button>Explore Similar Stories</.button>
-    </.link>
-    <.link patch={
-      ~p"/job_stories/new?#{build_filter_params(@search_term, @selected_product_ids, @selected_user_ids)}"
-    }>
+    <.link patch={~p"/job_stories/new?#{build_filter_params(@filters, @similarity_search)}"}>
       <.button>New Job story</.button>
     </.link>
   </:actions>
@@ -20,7 +15,7 @@
         <.input
           type="text"
           name="search"
-          value={@search_term}
+          value={@filters.search_term}
           placeholder="Search job stories..."
           phx-debounce="300"
         />
@@ -29,9 +24,170 @@
         <.button type="submit" phx-disable-with="Searching...">
           Search
         </.button>
-        <.button :if={@search_term != ""} type="button" phx-click="clear_search">
+        <.button :if={@filters.search_term != ""} type="button" phx-click="clear_search">
           Clear
         </.button>
+      </div>
+    </div>
+    
+<!-- Similarity Search Section -->
+    <div :if={@embeddings_ready} class="border-t pt-4">
+      <div class="flex items-center gap-4 mb-4">
+        <h3 class="text-lg font-medium text-gray-900">Similarity Search</h3>
+        <div class="flex items-center gap-2">
+          <.button type="button" phx-click="toggle_advanced_controls">
+            Advanced
+          </.button>
+          <.button
+            :if={@similarity_search.reference_job_story_id}
+            type="button"
+            phx-click="clear_reference_story"
+          >
+            Clear Reference
+          </.button>
+        </div>
+      </div>
+      
+<!-- Advanced Controls -->
+      <div :if={@similarity_search.show_advanced_controls} class="border-t pt-4 space-y-6">
+        <!-- Similarity Weights -->
+        <div>
+          <h4 class="text-md font-medium text-gray-900 mb-3">Similarity Weights</h4>
+          <div class="space-y-3">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Situation ({Float.round(@similarity_search.weights.situation * 100, 1)}%)
+                </label>
+                <input
+                  type="range"
+                  name="weights[situation]"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={@similarity_search.weights.situation}
+                  phx-change="update_similarity_weights"
+                  class="w-full"
+                  phx-debounce="100"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Motivation ({Float.round(@similarity_search.weights.motivation * 100, 1)}%)
+                </label>
+                <input
+                  type="range"
+                  name="weights[motivation]"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={@similarity_search.weights.motivation}
+                  phx-change="update_similarity_weights"
+                  class="w-full"
+                  phx-debounce="100"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Outcome ({Float.round(@similarity_search.weights.outcome * 100, 1)}%)
+                </label>
+                <input
+                  type="range"
+                  name="weights[outcome]"
+                  min="0"
+                  max="1"
+                  step="0.01"
+                  value={@similarity_search.weights.outcome}
+                  phx-change="update_similarity_weights"
+                  class="w-full"
+                  phx-debounce="100"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+        
+<!-- Sort By -->
+        <div>
+          <h4 class="text-md font-medium text-gray-900 mb-3">Sort By</h4>
+          <div class="space-y-3">
+            <select
+              phx-change="update_sort_by"
+              name="sort_by"
+              class="w-full max-w-xs px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-indigo-500 focus:border-indigo-500"
+            >
+              <option value="overall" selected={@similarity_search.sort_by == :overall}>
+                Overall Similarity
+              </option>
+              <option value="situation" selected={@similarity_search.sort_by == :situation}>
+                Situation Similarity
+              </option>
+              <option value="motivation" selected={@similarity_search.sort_by == :motivation}>
+                Motivation Similarity
+              </option>
+              <option value="outcome" selected={@similarity_search.sort_by == :outcome}>
+                Outcome Similarity
+              </option>
+            </select>
+          </div>
+        </div>
+        
+<!-- Minimum Scores -->
+        <div>
+          <h4 class="text-md font-medium text-gray-900 mb-3">Minimum Scores (%)</h4>
+          <div class="space-y-3">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Situation ({@similarity_search.min_scores.situation}%)
+                </label>
+                <input
+                  type="range"
+                  name="min_scores[situation]"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={@similarity_search.min_scores.situation}
+                  phx-change="update_min_scores"
+                  class="w-full"
+                  phx-debounce="100"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Motivation ({@similarity_search.min_scores.motivation}%)
+                </label>
+                <input
+                  type="range"
+                  name="min_scores[motivation]"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={@similarity_search.min_scores.motivation}
+                  phx-change="update_min_scores"
+                  class="w-full"
+                  phx-debounce="100"
+                />
+              </div>
+              <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">
+                  Outcome ({@similarity_search.min_scores.outcome}%)
+                </label>
+                <input
+                  type="range"
+                  name="min_scores[outcome]"
+                  min="0"
+                  max="100"
+                  step="1"
+                  value={@similarity_search.min_scores.outcome}
+                  phx-change="update_min_scores"
+                  class="w-full"
+                  phx-debounce="100"
+                />
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
     </div>
   </form>
@@ -41,8 +197,18 @@
   id="job_stories"
   rows={@streams.job_stories}
   filters={[
-    %{key: :products, items: @products, name_field: :name, selected_ids: @selected_product_ids},
-    %{key: :users, items: @users, name_field: :pseudonym, selected_ids: @selected_user_ids}
+    %{
+      key: :products,
+      items: @products,
+      name_field: :name,
+      selected_ids: @filters.selected_product_ids
+    },
+    %{
+      key: :users,
+      items: @users,
+      name_field: :pseudonym,
+      selected_ids: @filters.selected_user_ids
+    }
   ]}
   phx_change="filter_change"
   row_click={
@@ -66,12 +232,57 @@
       badge_class="bg-green-100 text-green-800"
     />
   </:col>
+  <:col :let={{_id, job_story}} :if={@similarity_search.reference_job_story_id} label="Similarity">
+    <%= if @similarity_search.reference_job_story_id == job_story.id do %>
+      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+        Reference
+      </span>
+    <% else %>
+      <%= if @job_stories_with_similarity do %>
+        <% similarity_details =
+          Enum.find_value(@job_stories_with_similarity, fn {js, details} ->
+            if js.id == job_story.id, do: details, else: nil
+          end) %>
+        <%= if similarity_details do %>
+          <div class="space-y-1">
+            <div class="flex flex-wrap gap-1">
+              <span class={[
+                "inline-flex items-center px-2 py-1 rounded text-xs font-medium",
+                get_component_color(similarity_details.situation)
+              ]}>
+                S: {format_similarity_score(similarity_details.situation)}
+              </span>
+              <span class={[
+                "inline-flex items-center px-2 py-1 rounded text-xs font-medium",
+                get_component_color(similarity_details.motivation)
+              ]}>
+                M: {format_similarity_score(similarity_details.motivation)}
+              </span>
+              <span class={[
+                "inline-flex items-center px-2 py-1 rounded text-xs font-medium",
+                get_component_color(similarity_details.outcome)
+              ]}>
+                O: {format_similarity_score(similarity_details.outcome)}
+              </span>
+            </div>
+            <div class="text-xs text-gray-600">
+              Overall: {format_similarity_score(similarity_details.overall)}
+            </div>
+          </div>
+        <% else %>
+          <span class="text-sm text-gray-500">Calculating...</span>
+        <% end %>
+      <% else %>
+        <span class="text-sm text-gray-500">Similar</span>
+      <% end %>
+    <% end %>
+  </:col>
   <:action :let={{_id, job_story}}>
     <div class="sr-only">
       <.link navigate={~p"/job_stories/#{job_story}"}>Show</.link>
     </div>
     <.link patch={
-      ~p"/job_stories/#{job_story}/edit?#{build_filter_params(@search_term, @selected_product_ids, @selected_user_ids)}"
+      ~p"/job_stories/#{job_story}/edit?#{build_filter_params(@filters, @similarity_search)}"
     }>
       Edit
     </.link>
@@ -87,12 +298,16 @@
       Delete
     </.link>
   </:action>
-  <:action :let={{_id, job_story}}>
-    <.link navigate={~p"/job_stories/similar?job_story_id=#{job_story.id}"}>
-      <.button size="sm" variant="outline">
-        Find Similar
+  <:action :let={{_id, job_story}} :if={@embeddings_ready}>
+    <%= if @similarity_search.reference_job_story_id == job_story.id do %>
+      <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800">
+        Reference
+      </span>
+    <% else %>
+      <.button type="button" phx-click="set_reference_story" phx-value-id={job_story.id}>
+        Use as Reference
       </.button>
-    </.link>
+    <% end %>
   </:action>
 </.filterable_table>
 
@@ -102,7 +317,7 @@
   show
   on_cancel={
     Phoenix.LiveView.JS.patch(
-      ~p"/job_stories?#{build_filter_params(@search_term, @selected_product_ids, @selected_user_ids)}"
+      ~p"/job_stories?#{build_filter_params(@filters, @similarity_search)}"
     )
   }
 >
@@ -112,8 +327,6 @@
     title={@page_title}
     action={@live_action}
     job_story={@job_story}
-    patch={
-      ~p"/job_stories?#{build_filter_params(@search_term, @selected_product_ids, @selected_user_ids)}"
-    }
+    patch={~p"/job_stories?#{build_filter_params(@filters, @similarity_search)}"}
   />
 </.modal>
