@@ -1,4 +1,4 @@
-defmodule Storyteller.EmbeddingsTest do
+defmodule Storyteller.ManualEmbeddingsTest do
   defp format_similarity_score(similarity) do
     percentage = (similarity * 100) |> Float.round(1)
     "#{percentage}%"

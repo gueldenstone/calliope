@@ -65,9 +65,18 @@ defmodule StorytellerWeb.JobStoryLive.Index do
 
     job_stories = JobStories.list_job_stories(job_story_filters)
 
-    # Apply initial sorting
+    # Apply initial sorting - but respect similarity sorting if a reference story is selected
     current_sort = socket.assigns.table_sort
-    sorted_job_stories = sort_job_stories(job_stories, current_sort)
+
+    sorted_job_stories =
+      if similarity_search.reference_job_story_id do
+        # When similarity search is active, don't apply table sorting
+        # The similarity sorting is already applied in JobStories.list_job_stories/1
+        job_stories
+      else
+        # Only apply table sorting when no similarity search is active
+        sort_job_stories(job_stories, current_sort)
+      end
 
     # Calculate similarity details for each job story if a reference story is selected
     job_stories_with_similarity =
@@ -164,10 +173,21 @@ defmodule StorytellerWeb.JobStoryLive.Index do
         Enum.map(job_stories, fn job_story -> {job_story, nil} end)
       end
 
+    # Apply sorting - but respect similarity sorting if a reference story is selected
+    sorted_job_stories =
+      if socket.assigns.similarity_search.reference_job_story_id do
+        # When similarity search is active, don't apply table sorting
+        # The similarity sorting is already applied in JobStories.list_job_stories/1
+        job_stories
+      else
+        # Only apply table sorting when no similarity search is active
+        sort_job_stories(job_stories, socket.assigns.table_sort)
+      end
+
     {:noreply,
      socket
      |> assign(:job_stories_with_similarity, job_stories_with_similarity)
-     |> stream(:job_stories, job_stories, reset: true)}
+     |> stream(:job_stories, sorted_job_stories, reset: true)}
   end
 
   # Helper function to build filter parameters and push patch
@@ -459,42 +479,47 @@ defmodule StorytellerWeb.JobStoryLive.Index do
 
   @impl true
   def handle_event("sort_table", %{"field" => field}, socket) do
-    field = String.to_existing_atom(field)
-    current_sort = socket.assigns.table_sort
+    # If similarity search is active, ignore table sorting to preserve similarity order
+    if socket.assigns.similarity_search.reference_job_story_id do
+      {:noreply, socket}
+    else
+      field = String.to_existing_atom(field)
+      current_sort = socket.assigns.table_sort
 
-    new_direction =
-      if current_sort.field == field do
-        if current_sort.direction == :asc, do: :desc, else: :asc
-      else
-        :asc
-      end
-
-    new_sort = %{field: field, direction: new_direction}
-
-    # Get current job stories from the similarity data and sort them
-    job_stories =
-      Enum.map(socket.assigns.job_stories_with_similarity, fn {job_story, _similarity} ->
-        job_story
-      end)
-
-    sorted_job_stories = sort_job_stories(job_stories, new_sort)
-
-    # Rebuild the similarity data with sorted job stories
-    sorted_similarity_data =
-      Enum.map(sorted_job_stories, fn job_story ->
-        case Enum.find(socket.assigns.job_stories_with_similarity, fn {js, _} ->
-               js.id == job_story.id
-             end) do
-          {_found_job_story, similarity_details} -> {job_story, similarity_details}
-          nil -> {job_story, nil}
+      new_direction =
+        if current_sort.field == field do
+          if current_sort.direction == :asc, do: :desc, else: :asc
+        else
+          :asc
         end
-      end)
 
-    {:noreply,
-     socket
-     |> assign(:table_sort, new_sort)
-     |> assign(:job_stories_with_similarity, sorted_similarity_data)
-     |> stream(:job_stories, sorted_job_stories, reset: true)}
+      new_sort = %{field: field, direction: new_direction}
+
+      # Get current job stories from the similarity data and sort them
+      job_stories =
+        Enum.map(socket.assigns.job_stories_with_similarity, fn {job_story, _similarity} ->
+          job_story
+        end)
+
+      sorted_job_stories = sort_job_stories(job_stories, new_sort)
+
+      # Rebuild the similarity data with sorted job stories
+      sorted_similarity_data =
+        Enum.map(sorted_job_stories, fn job_story ->
+          case Enum.find(socket.assigns.job_stories_with_similarity, fn {js, _} ->
+                 js.id == job_story.id
+               end) do
+            {_found_job_story, similarity_details} -> {job_story, similarity_details}
+            nil -> {job_story, nil}
+          end
+        end)
+
+      {:noreply,
+       socket
+       |> assign(:table_sort, new_sort)
+       |> assign(:job_stories_with_similarity, sorted_similarity_data)
+       |> stream(:job_stories, sorted_job_stories, reset: true)}
+    end
   end
 
   defp parse_list_param(nil), do: []
