@@ -40,6 +40,26 @@ defmodule StorytellerWeb.Router do
     live "/:id/show/edit", ProductLive.Show, :edit
   end
 
+  scope "/markets", StorytellerWeb do
+    pipe_through :browser
+    live "/", MarketLive.Index, :index
+    live "/new", MarketLive.Index, :new
+    live "/:id/edit", MarketLive.Index, :edit
+
+    live "/:id", MarketLive.Show, :show
+    live "/:id/show/edit", MarketLive.Show, :edit
+  end
+
+  scope "/users", StorytellerWeb do
+    pipe_through :browser
+    live "/", UserLive.Index, :index
+    live "/new", UserLive.Index, :new
+    live "/:id/edit", UserLive.Index, :edit
+
+    live "/:id", UserLive.Show, :show
+    live "/:id/show/edit", UserLive.Show, :edit
+  end
+
   # Other scopes may use custom stacks.
   # scope "/api", StorytellerWeb do
   #   pipe_through :api

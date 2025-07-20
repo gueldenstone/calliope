@@ -1,0 +1,41 @@
+<.header>
+  Listing Markets
+  <:actions>
+    <.link patch={~p"/markets/new"}>
+      <.button>New Market</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.table
+  id="markets"
+  rows={@streams.markets}
+  row_click={fn {_id, market} -> JS.navigate(~p"/markets/#{market}") end}
+>
+  <:col :let={{_id, market}} label="Name">{market.name}</:col>
+  <:action :let={{_id, market}}>
+    <div class="sr-only">
+      <.link navigate={~p"/markets/#{market}"}>Show</.link>
+    </div>
+    <.link patch={~p"/markets/#{market}/edit"}>Edit</.link>
+  </:action>
+  <:action :let={{id, market}}>
+    <.link
+      phx-click={JS.push("delete", value: %{id: market.id}) |> hide("##{id}")}
+      data-confirm="Are you sure?"
+    >
+      Delete
+    </.link>
+  </:action>
+</.table>
+
+<.modal :if={@live_action in [:new, :edit]} id="market-modal" show on_cancel={JS.patch(~p"/markets")}>
+  <.live_component
+    module={StorytellerWeb.MarketLive.FormComponent}
+    id={@market.id || :new}
+    title={@page_title}
+    action={@live_action}
+    market={@market}
+    patch={~p"/markets"}
+  />
+</.modal>

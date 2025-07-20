@@ -1,0 +1,26 @@
+<.header>
+  Market {@market.id}
+  <:subtitle>This is a market record from your database.</:subtitle>
+  <:actions>
+    <.link patch={~p"/markets/#{@market}/show/edit"} phx-click={JS.push_focus()}>
+      <.button>Edit market</.button>
+    </.link>
+  </:actions>
+</.header>
+
+<.list>
+  <:item title="Name">{@market.name}</:item>
+</.list>
+
+<.back navigate={~p"/markets"}>Back to markets</.back>
+
+<.modal :if={@live_action == :edit} id="market-modal" show on_cancel={JS.patch(~p"/markets/#{@market}")}>
+  <.live_component
+    module={StorytellerWeb.MarketLive.FormComponent}
+    id={@market.id}
+    title={@page_title}
+    action={@live_action}
+    market={@market}
+    patch={~p"/markets/#{@market}"}
+  />
+</.modal>
